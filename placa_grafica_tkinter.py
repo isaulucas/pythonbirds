@@ -6,7 +6,7 @@ import math
 from os import path
 import atores
 
-from fase import Fase, EM_ANDAMENTO, VITORIA
+from fase import Fase
 from atores import PassaroVermelho, PassaroAmarelo, Porco, Obstaculo
 
 ALTURA_DA_TELA = 600  # px
@@ -43,15 +43,13 @@ def plotar(camada_de_atores, ponto):
         camada_de_atores.create_image((x, y), image=image, anchor=NW)
 
 
-def animar(tela, camada_de_atores, fase, passo=0.01, delta_t=0.04):
+def animar(tela, camada_de_atores, fase, passo=0.01, delta_t=0.01):
     tempo = 0
     passo = int(1000 * passo)
     angulo = 0
     multiplicador_rebobinar = 20
 
     def _animar():
-        tempo_de_inicio_de_animacao=time.time()
-
         nonlocal tempo
         nonlocal delta_t
         nonlocal angulo
@@ -59,10 +57,10 @@ def animar(tela, camada_de_atores, fase, passo=0.01, delta_t=0.04):
         if tempo <= 0:
             tempo = 0
             delta_t /= -multiplicador_rebobinar
-        if fase.status() != EM_ANDAMENTO:
+        if fase.acabou():
             camada_de_atores.create_image(162, 55, image=PYTHONBIRDS_LOGO, anchor=NW)
             camada_de_atores.create_image(54, 540, image=MENU, anchor=NW)
-            if fase.status() == VITORIA:
+            if 'ganhou' in fase.status():
                 img = VOCE_GANHOU
             else:
                 img = VOCE_PERDEU
@@ -75,28 +73,21 @@ def animar(tela, camada_de_atores, fase, passo=0.01, delta_t=0.04):
 
             camada_de_atores.create_line(52, 493, 52 + tamanho_seta * math.cos(angulo_rad),
                                          493 + tamanho_seta * math.sin(angulo_rad), width=1.5)
-            camada_de_atores.create_text(35, 493, text="%d°" % angulo)
+            camada_de_atores.create_text(35, 493, text=u"%d°" % angulo)
             for ponto in fase.calcular_pontos(tempo):
                 plotar(camada_de_atores, ponto)
-            tempo_gasto_com_animacao= round((time.time() - tempo_de_inicio_de_animacao)*1000) # Trans
-            tempo_proxima_animacao = passo - tempo_gasto_com_animacao if passo>tempo_gasto_com_animacao else 1
-            tela.after(tempo_proxima_animacao, _animar)
+            tela.after(passo, _animar)
 
     def _ouvir_comandos_lancamento(evento):
         nonlocal angulo
         if evento.keysym == 'Up':
             angulo += 1
-            if angulo > 360:
-                angulo = 1
         elif evento.keysym == 'Down':
             angulo -= 1
-            if angulo < 0:
-                angulo = 359
         elif evento.keysym == 'Return' or evento.keysym == 'space':
             fase.lancar(angulo, tempo)
 
     def _replay(event):
-        return
         nonlocal tempo
         nonlocal delta_t
         if fase.acabou(tempo):
@@ -105,7 +96,6 @@ def animar(tela, camada_de_atores, fase, passo=0.01, delta_t=0.04):
 
 
     def _jogar_novamente(event):
-        return
         nonlocal tempo
         nonlocal delta_t
         if fase.acabou(tempo):
@@ -142,7 +132,7 @@ def rodar_fase(fase):
 
 
 if __name__ == '__main__':
-    fase = Fase(intervalo_de_colisao=32)
+    fase = Fase(intervalo_de_colisao=10)
     passaros = [PassaroVermelho(30, 30), PassaroAmarelo(30, 30), PassaroAmarelo(30, 30)]
     porcos = [Porco(750, 1), Porco(700, 1)]
     obstaculos = [Obstaculo(310, 100)]
