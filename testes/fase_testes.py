@@ -1,212 +1,217 @@
 # -*- coding: utf-8 -*-
+from intertools import chain
 
 import os
-import sys
-from os import path
 from unittest.case import TestCase
-
-project_dir = path.dirname(__file__)
-project_dir = path.join('..')
-sys.path.append(project_dir)
-from placa_grafica_tkinter import rodar_fase
+import math
+import sys
 
 project_dir = os.path.join(os.path.dirname(__file__), '..')
 project_dir = os.path.normpath(project_dir)
 sys.path.append(project_dir)
 
-from atores import (Obstaculo, Porco, PassaroVermelho, PassaroAmarelo,
-                    DESTRUIDO, ATIVO, DuploLancamentoExcecao)
-from fase import Fase, Ponto, EM_ANDAMENTO, VITORIA, DERROTA
-
-
-class AtorFake:
-    def __init__(self, x=0, y=0):
-        self.y = y
-        self.x = x
-        self.status = ATIVO
-        self.colidir_executado = False
-        self.calcular_posicao_executado = False
-        self.intervalo_colisao = None
-
-    def calcular_posicao(self, tempo):
-        self.calcular_posicao_executado = True
-
-    def colidir(self, outro_ator, intervalo):
-        self.colidir_executado = outro_ator.colidir_executado = True
-        self.intervalo_colisao = outro_ator.intervalo_colisao = intervalo
-
-    def caracter(self):
-        return ' '
-
-
-class ObstaculoFake(AtorFake):
-    pass
-
-
-class PorcoFake(AtorFake):
-    pass
-
-
-class PassaroFake(AtorFake):
-    def __init__(self, x=0, y=0):
-        super().__init__(x, y)
-        self._lancado = False
-        self.colidir_com_chao_executado = False
-
-    def foi_lancado(self):
-        return self._lancado
-
-    def lancar(self, angulo, tempo):
-        if self._lancado:
-            raise DuploLancamentoExcecao()
-        self._lancado = True
-
-    def colidir_com_chao(self):
-        self.colidir_com_chao_executado = True
+from atores import Obstaculo, Porco, PassaroVermelho, PassaroAmarelo, DESTRUIDO, ATIVO
+from fase import Fase, Ponto
+import placa_grafica
 
 
 class FaseTestes(TestCase):
     def teste_adicionar_obstaculo(self):
         fase = Fase()
         self.assertListEqual([], fase._obstaculos)
-        obstaculo = ObstaculoFake()
+        obstaculo = Obstaculo()
         fase.adicionar_obstaculo(obstaculo)
         self.assertListEqual([obstaculo], fase._obstaculos)
 
-        obstaculo1, obstaculo2 = ObstaculoFake(), ObstaculoFake()
+        obstaculo1, obstaculo2 = Obstaculo(), Obstaculo()
         fase.adicionar_obstaculo(obstaculo1, obstaculo2)
-        self.assertListEqual([obstaculo, obstaculo1, obstaculo2],
-                             fase._obstaculos)
+        self.assertListEqual([obstaculo, obstaculo1, obstaculo2], fase._obstaculos)A
 
-    def teste_adicionar_porco(self):
+def teste_adicionar_porco(self):
         fase = Fase()
         self.assertListEqual([], fase._porcos)
-        porco = PorcoFake()
+        porco = Porco()
         fase.adicionar_porco(porco)
         self.assertListEqual([porco], fase._porcos)
 
-        porco1, porco2 = PorcoFake(), PorcoFake()
+        porco1, porco2 = Porco(), Porco()
         fase.adicionar_porco(porco1, porco2)
         self.assertListEqual([porco, porco1, porco2], fase._porcos)
 
     def teste_adicionar_passaro(self):
         fase = Fase()
         self.assertListEqual([], fase._passaros)
-        passaro = PassaroFake()
+        passaro = PassaroVermelho()
         fase.adicionar_passaro(passaro)
         self.assertListEqual([passaro], fase._passaros)
 
-        passaro1, passaro2 = PassaroFake(), PassaroFake()
+        passaro1, passaro2 = PassaroVermelho(), PassaroAmarelo()
         fase.adicionar_passaro(passaro1, passaro2)
         self.assertListEqual([passaro, passaro1, passaro2], fase._passaros)
 
+
     def teste_acabou_sem_porcos(self):
         fase = Fase()
-        self.assertEqual(VITORIA, fase.status())
+        self.assertTrue(fase.acabou())
 
     def teste_acabou_com_porcos_e_passaros(self):
         fase = Fase()
-        porcos = [PorcoFake(1, 1) for _ in range(2)]  # criando 2 porcos
-        passaros = [PassaroFake(1, 1) for _ in range(2)]  # criando 2 pássaros
+        porcos = [Porco(1, 1) for i in range(2)]  # criando 2 porcos
+        passaros = [PassaroAmarelo(1, 1) for i in range(2)]  # criando 2 pássaros
         fase.adicionar_porco(*porcos)
         fase.adicionar_passaro(*passaros)
 
-        self.assertEqual(EM_ANDAMENTO, fase.status())
+        self.assertFalse(fase.acabou())
 
-        for ator in porcos + passaros:
-            ator.status = DESTRUIDO
-        self.assertEqual(VITORIA, fase.status())
+        # colidindo cada passaro com um porco no tempo 3
+        for passaro, porco in zip(passaros, porcos):
+            passaro.colidir(porco, 3)
+
+        self.assertTrue(fase.acabou())
 
         fase.adicionar_obstaculo(Obstaculo())
-        self.assertEqual(VITORIA, fase.status(),
-                         'Obstáculo não interfere no fim do jogo')
+        self.assertTrue(fase.acabou(), 'Obstáculo não interfere no fim do jogo')
 
-        fase.adicionar_porco(PorcoFake())
-        self.assertEqual(DERROTA, fase.status(),
-                         'Com Porco ativo e sem pássaro para lançar, o jogo '
-                         'deveria acabar')
+        fase.adicionar_porco(Porco())
+        self.assertTrue(fase.acabou(), 'Com Porco ativo e sem pássaro para lançar, o jogo deveria acabar')
 
-        fase.adicionar_passaro(PassaroFake())
-        self.assertEqual(EM_ANDAMENTO, fase.status(),
-                         'Com Porco ativo e com pássaro para lançar, o jogo '
-                         'não deveria acabar')
+        fase.adicionar_passaro(PassaroAmarelo())
+        self.assertFalse(fase.acabou(), 'Com Porco ativo e com pássaro para lançar, o jogo não deveria acabar')
 
     def teste_status(self):
         fase = Fase()
-        porcos = [PorcoFake(1, 1) for _ in range(2)]
-        passaros = [PassaroFake(1, 1) for _ in range(2)]
+        porcos = [Porco(1, 1) for i in range(2)]
+        passaros = [PassaroAmarelo(1, 1) for i in range(2)]
         fase.adicionar_porco(*porcos)
         fase.adicionar_passaro(*passaros)
-        self.assertEqual(EM_ANDAMENTO, fase.status())
+        self.assertEqual('Jogo em andamento.', fase.status())
 
-        for ator in porcos + passaros:
-            ator.status = DESTRUIDO
-        self.assertEqual(VITORIA, fase.status(),
-                         'Sem porcos ativos o jogo deveria terminar com '
-                         'vitória')
+        for passaro, porco in zip(passaros, porcos):
+            passaro.colidir(porco, 3)
 
-        fase.adicionar_obstaculo(ObstaculoFake())
-        self.assertEqual(VITORIA, fase.status(),
+        self.assertEqual('Jogo em encerrado. Você ganhou!', fase.status(),
+                         'Sem porcos ativos o jogo deveria terminar com vitória')
+
+        fase.adicionar_obstaculo(Obstaculo())
+        self.assertEqual('Jogo em encerrado. Você ganhou!', fase.status(),
                          'Obstáculo não interfere para definir vitória')
 
-        porco = PorcoFake()
+        porco = Porco()
         fase.adicionar_porco(porco)
-        self.assertEqual(DERROTA, fase.status(),
-                         'Com Porco ativo e sem pássaro para lançar, o jogo '
-                         'deveria acabar em derrota')
+        self.assertEqual('Jogo em encerrado. Você perdeu!', fase.status(),
+                         'Com Porco ativo e sem pássaro para lançar, o jogo deveria acabar em derrota')
 
-        fase.adicionar_passaro(PassaroFake())
-        self.assertEqual(EM_ANDAMENTO, fase.status(),
-                         'Com Porco ativo e com pássaro para lançar, o jogo '
-                         'não deveria acabar')
+        fase.adicionar_passaro(PassaroAmarelo())
+        self.assertEqual('Jogo em andamento.', fase.status(),
+                         'Com Porco ativo e com pássaro para lançar, o jogo não deveria acabar')
 
-        porco.status = DESTRUIDO
-        self.assertEqual(VITORIA, fase.status(),
+        porco.colidir(porco, 3)
+        self.assertEqual('Jogo em encerrado. Você ganhou!', fase.status(),
                          'Sem porco ativo, o jogo deveria acabar com vitória')
 
     def teste_lancar_passaro_sem_erro_quando_nao_existe_passaro(self):
-        passaros = [PassaroFake(1, 1) for _ in range(2)]
+        passaro_vermelho, passaro_amarelo = PassaroVermelho(1, 1), PassaroAmarelo(1, 1)
         fase = Fase()
-        fase.adicionar_passaro(*passaros)
-        self.assertFalse(passaros[0].foi_lancado())
-        self.assertFalse(passaros[1].foi_lancado())
+        fase.adicionar_passaro(passaro_vermelho, passaro_amarelo)
+        self.assertFalse(passaro_vermelho.foi_lancado())
+        self.assertFalse(passaro_amarelo.foi_lancado())
         fase.lancar(90, 1)
         fase.lancar(45, 3)
-        fase.lancar(31,
-                    5)  # testando que lançar passaros depios de todos
-        # lançados não causa erro
+        fase.lancar(31, 5)  # testando que lançar passaros depios de todos lançados não causa erro
 
-        self.assertTrue(passaros[0].foi_lancado())
-        self.assertTrue(passaros[1].foi_lancado())
+        self.assertTrue(passaro_vermelho.foi_lancado())
+        self.assertEqual(math.radians(90), passaro_vermelho._angulo_de_lancamento)
+        self.assertEqual(1, passaro_vermelho._tempo_de_lancamento)
 
-    def teste_intervalo_de_colisao_padrao(self):
+        self.assertTrue(passaro_amarelo.foi_lancado())
+        self.assertEqual(math.radians(45), passaro_amarelo._angulo_de_lancamento)
+        self.assertEqual(3, passaro_amarelo._tempo_de_lancamento)
+
+    def teste_intervalo_de_colisao_padrão(self):
         '''
-        Método que testa se o intervalo de colisão da Fase é repassado aos
-        atores. Padrão de intervalo é 1
+        Método que testa se o intervalo de colisão da Fase é repassado aos atores. Padrão de intervalo é 1
         '''
         fase = Fase()
-        passaro = PassaroFake(1, 1)
+        passaro = PassaroAmarelo(1, 1)
         fase.adicionar_passaro(passaro)
-        porco = PorcoFake(2, 2)
+        porco = Porco(2, 2)
         fase.adicionar_porco(porco)
         fase.calcular_pontos(0)
-        self.assertTrue(passaro.colidir_executado)
-        self.assertTrue(porco.colidir_executado)
-        self.assertTrue(passaro.calcular_posicao_executado)
-        self.assertTrue(passaro.colidir_com_chao_executado)
-        self.assertEqual(1, passaro.intervalo_colisao)
-        self.assertEqual(1, porco.intervalo_colisao)
+        self.assertEqual(DESTRUIDO, passaro.status)
+        self.assertEqual(DESTRUIDO, porco.status)
 
     def teste_intervalo_de_colisao_nao_padrao(self):
         '''
-        Método que testa se o intervalo de colisão da Fase é repassado aos
-        atores. valor testado: 31
+        Método que testa se o intervalo de colisão da Fase é repassado aos atores. valor testado: 31
         '''
         fase = Fase(30)
-        passaro = PassaroFake(1, 1)
+        passaro = PassaroAmarelo(1, 1)
         fase.adicionar_passaro(passaro)
-        porco = PorcoFake(31, 31)
+        porco = Porco(31, 31)
         fase.adicionar_porco(porco)
         fase.calcular_pontos(0)
-        self.assertEqual(30, passaro.intervalo_colisao)
-        self.assertEqual(30, porco.intervalo_colisao)
+        self.assertEqual(DESTRUIDO, passaro.status)
+        self.assertEqual(DESTRUIDO, porco.status)
+
+    def teste_calcular_pontos(self):
+        fase_exemplo = criar_fase_exemplo()
+        expected = [Ponto(3, 3, 'V'), Ponto(3, 3, 'A'), Ponto(3, 3, 'A'), Ponto(31, 10, 'O'), Ponto(78, 1, '@'),
+                    Ponto(70, 1, '@')]
+        self.assertListEqual(expected, fase_exemplo.calcular_pontos(0))
+
+        fase_exemplo.lancar(45, 1)
+
+        # i variando de 1 até 2.9
+        for i in range(100, 300, 1):
+            fase_exemplo.calcular_pontos(i / 100)
+
+        fase_exemplo.lancar(63, 3)
+
+        # i variando de 3 até 3.9
+        for i in range(300, 400, 1):
+            fase_exemplo.calcular_pontos(i / 100)
+
+        fase_exemplo.lancar(23, 4)
+
+        expected = [Ponto(32, 11, 'v'), Ponto(17, 25, 'A'), Ponto(3, 3, 'A'), Ponto(31, 10, ' '), Ponto(78, 1, '@'),
+                    Ponto(70, 1, '@')]
+
+        self.assertListEqual(expected, fase_exemplo.calcular_pontos(4))
+
+        # i variando de 4 até 6.9
+        for i in range(400, 700, 1):
+            fase_exemplo.calcular_pontos(i / 100)
+
+        expected = [Ponto(32, 11, 'v'), Ponto(57, 30, 'A'), Ponto(70, 2, 'a'), Ponto(31, 10, ' '), Ponto(78, 1, '@'),
+                    Ponto(70, 1, '+')]
+
+        self.assertListEqual(expected, fase_exemplo.calcular_pontos(7))
+
+        # i variando de 7 até 8.49
+        for i in range(700, 849, 1):
+            fase_exemplo.calcular_pontos(i / 100)
+        print(fase_exemplo.calcular_pontos(8.5))
+
+
+        expected = [Ponto(32,11,'v'), Ponto(77,0,'a'), Ponto(70,2,'a'), Ponto(31,10,' '), Ponto(78,1,'+'), Ponto(70,1,'+')]
+
+        self.assertListEqual(expected, fase_exemplo.calcular_pontos(8.5))
+
+        self.assertTrue(fase_exemplo.acabou())
+
+
+def criar_fase_exemplo():
+    fase_exemplo = Fase()
+    passaros = [PassaroVermelho(3, 3), PassaroAmarelo(3, 3), PassaroAmarelo(3, 3)]
+    porcos = [Porco(78, 1), Porco(70, 1)]
+    obstaculos = [Obstaculo(31, 10)]
+
+    fase_exemplo.adicionar_passaro(*passaros)
+    fase_exemplo.adicionar_porco(*porcos)
+    fase_exemplo.adicionar_obstaculo(*obstaculos)
+
+    return fase_exemplo
+
+
+if __name__ == '__main__':
+    placa_grafica.animar(criar_fase_exemplo())
