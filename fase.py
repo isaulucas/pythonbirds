@@ -25,7 +25,7 @@ class Fase():
 
     def _adicionar_ator(self, lista, *atores):
         lista.extend(atores)
-        
+
     def adicionar_obstaculo(self, *obstaculos):
         self._adicionar_ator(self._obstaculos, *obstaculos)
 
@@ -33,11 +33,11 @@ class Fase():
         self._adicionar_ator(self._porcos, *porcos)
 
     def adicionar_passaro(self, *passaros):
-       self._adicionar_ator(self._passaros, *passaros)
+        self._adicionar_ator(self._passaros, *passaros)
 
     def acabou(self):
         return not self._existe_porco_ativo() or not self._existe_passaro_ativo()
-    
+
     def status(self):
         if not self._existe_porco_ativo():
             return 'Jogo em encerrado. Você ganhou!'
@@ -57,7 +57,7 @@ class Fase():
         obstaculos_e_porcos = chain(self._obstaculos, self._porcos)
         pontos.extend([self._transformar_em_ponto(ator) for ator in obstaculos_e_porcos])
         return pontos
-        
+
     def _transformar_em_ponto(self, ator):
         return Ponto(ator.x, ator.y, ator.caracter)
 
@@ -81,4 +81,4 @@ class Fase():
         return False
 
     def _existe_passaro_ativo(self):
-        return self._verificar_se_existe_ator_ativo(self._passaros)    
+        return self._verificar_se_existe_ator_ativo(self._passaros)
