@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from intertools import chain
+from itertools import chain
 
 import os
 from unittest.case import TestCase
@@ -25,9 +25,9 @@ class FaseTestes(TestCase):
 
         obstaculo1, obstaculo2 = Obstaculo(), Obstaculo()
         fase.adicionar_obstaculo(obstaculo1, obstaculo2)
-        self.assertListEqual([obstaculo, obstaculo1, obstaculo2], fase._obstaculos)A
+        self.assertListEqual([obstaculo, obstaculo1, obstaculo2], fase._obstaculos)
 
-def teste_adicionar_porco(self):
+    def teste_adicionar_porco(self):
         fase = Fase()
         self.assertListEqual([], fase._porcos)
         porco = Porco()
